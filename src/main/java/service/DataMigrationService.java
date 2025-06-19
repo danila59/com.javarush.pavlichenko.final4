@@ -6,6 +6,7 @@ import config.PropertiesSessionFactoryProvider;
 import dao.CityDAO;
 import dao.CountryDAO;
 import dto.CityCountry;
+import dto.CityCountryMapper;
 import dto.Language;
 import entity.City;
 import entity.Country;
@@ -15,22 +16,20 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisStringCommands;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.mapstruct.factory.Mappers;
 import redis.RedisClientProvider;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static java.util.Objects.nonNull;
 
 public class DataMigrationService {
     private final RedisClient redisClient;
     private final ObjectMapper mapper;
-    private CityDAO cityDAO;
-    private CountryDAO countryDAO;
+    private final CityDAO cityDAO;
+    private final CountryDAO countryDAO;
     public SessionFactory sessionFactory;
-    private PropertiesSessionFactoryProvider propertiesSessionFactoryProvider;
+    private final PropertiesSessionFactoryProvider propertiesSessionFactoryProvider;
 
 
     public DataMigrationService() {
@@ -43,36 +42,14 @@ public class DataMigrationService {
         this.cityDAO = new CityDAO(sessionFactory);
     }
 
-
-
     public List<CityCountry> transformData(List<City> cities) {
-        return cities.stream().map(city -> {
-            CityCountry res = new CityCountry();
-            res.setId(city.getId());
-            res.setName(city.getCityName());
-            res.setPopulation(city.getPopulation());
-            res.setDistrict(city.getDistrict());
+        CityCountryMapper mapper = Mappers.getMapper(CityCountryMapper.class);
 
-            Country country = city.getCountry();
-            res.setAlternativeCountryCode(country.getCode2());
-            res.setContinent(country.getContinent());
-            res.setCountryCode(country.getCode());
-            res.setCountryName(country.getName());
-            res.setCountryPopulation(country.getPopulation());
-            res.setCountryRegion(country.getRegion());
-            res.setCountrySurfaceArea(country.getArea());
-            Set<CountryLanguage> countryLanguages = country.getLanguages();
-            Set<Language> languages = countryLanguages.stream().map(cl -> {
-                Language language = new Language();
-                language.setLanguage(cl.getLanguage());
-                language.setOfficial(cl.getOfficial());
-                language.setPercentage(cl.getPercentage());
-                return language;
-            }).collect(Collectors.toSet());
-            res.setLanguages(languages);
-
-            return res;
-        }).collect(Collectors.toList());
+        List<CityCountry> cityCountries = new ArrayList<>();
+        for (City city : cities) {
+            cityCountries.add(mapper.toDto(city, city.getCountry()));
+        }
+        return cityCountries;
     }
 
     public void pushToRedis(List<CityCountry> data) {

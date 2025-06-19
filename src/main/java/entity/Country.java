@@ -18,6 +18,7 @@ public class Country {
     private String code2;
 
     private String name;
+
     @Enumerated(EnumType.ORDINAL)
     private Continent continent;
 

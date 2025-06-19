@@ -21,7 +21,6 @@ public class City {
 
     private Integer population;
 
-
     public Country getCountry() {
         return country;
     }
